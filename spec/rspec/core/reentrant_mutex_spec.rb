@@ -18,13 +18,13 @@ RSpec.describe RSpec::Core::ReentrantMutex do
     order.declare(:after)  { mutex.synchronize { } }
 
     order.pass_to :before, :resume_on => :exit
-    mutex.synchronize { order.pass_to :before, :resume_on => :sleep }
-    order.pass_to :before, :resume_on => :exit
+    mutex.synchronize { order.pass_to :within, :resume_on => :sleep }
+    order.pass_to :after, :resume_on => :exit
   end
 
   it 'resumes the next thread once all its synchronize blocks have completed' do
     order.declare(:thread) { mutex.synchronize { } }
     mutex.synchronize { order.pass_to :thread, :resume_on => :sleep }
-    order.apocalypse! :join
+    order.join_all
   end
 end

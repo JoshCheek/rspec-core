@@ -407,7 +407,7 @@ module RSpec::Core
       specify 'memoized block will only be evaluated once' do
         describe_successfully do
           let!(:order) { ThreadOrder.new }
-          after  { order.apocalypse! :join }
+          after  { order.apocalypse! }
           before { @previously_accessed = false }
 
           let :memoized_value do
@@ -419,6 +419,7 @@ module RSpec::Core
           example do
             order.declare(:second) { memoized_value }
             memoized_value
+            order.join_all
           end
         end
       end
