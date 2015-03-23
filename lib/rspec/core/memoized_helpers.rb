@@ -123,11 +123,17 @@ module RSpec
 
       # @private
       def __memoized
-        @__memoized ||= Memoized.new
+        @__memoized
       end
 
       # @private
-      class Memoized
+      def initialize(*)
+        @__memoized = ThreadsafeMemoized.new
+        super
+      end
+
+      # @private
+      class ThreadsafeMemoized
         def initialize
           @memoized = {}
           @mutex = ReentrantMutex.new
@@ -148,15 +154,21 @@ module RSpec
       # @private
       class ContextHookMemoized
         def self.isolate_for_context_hook(example_group_instance)
-          hash = self
+          exploding_memoized = self
 
           example_group_instance.instance_exec do
-            @__memoized = hash
+            @__memoized = exploding_memoized
 
             begin
               yield
             ensure
-              @__memoized = nil
+              # Uhm... this is *really* questionable.
+              # Tests fail if we don't do this, e.g. will be random despite setting the seed.
+              # Our tests must be expecting isolate_for_context_hook to reset @__memoized
+              # which implies mutable object sharing and manipulating (tests fail if objects don't get reset)
+              # as well as awareness of invocation context, as the correct behavior would be
+              # to swap to this object during the inaccessible period, then replace the original one.
+              @__memoized = ThreadsafeMemoized.new
             end
           end
         end
