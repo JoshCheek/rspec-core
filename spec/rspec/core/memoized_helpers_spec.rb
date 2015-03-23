@@ -367,9 +367,7 @@ module RSpec::Core
     end
 
     describe 'threadsafety', :threadsafe => true do
-      # Force call to eq to happen in threaded env to prevent "circular require" warnings
-      # explanation: https://github.com/rspec/rspec-core/pull/1858/files#r25411166
-      before(:all) { eq 1 }
+      before(:all) { eq 1 } # explanation: https://github.com/rspec/rspec-core/pull/1858/files#r25411166
 
       class RaiseOnFailuresReporter < RSpec::Core::NullReporter
         def self.example_failed(example)
