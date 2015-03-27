@@ -122,7 +122,7 @@ module RSpec
     private
 
       # @private
-      def __memoized
+      def __memoized # raises warnings on private attributes, so have to do it this way
         @__memoized
       end
 
@@ -162,12 +162,13 @@ module RSpec
             begin
               yield
             ensure
-              # Uhm... this is *really* questionable.
-              # Tests fail if we don't do this, e.g. will be random despite setting the seed.
-              # Our tests must be expecting isolate_for_context_hook to reset @__memoized
-              # which implies mutable object sharing and manipulating (tests fail if objects don't get reset)
-              # as well as awareness of invocation context, as the correct behavior would be
-              # to swap to this object during the inaccessible period, then replace the original one.
+              # This is doing a reset instead of just isolating for context hook.
+              # Really, this should set the old @__memoized back into place.
+              #
+              # Caller is the before and after context hooks
+              # which are both called from self.run (https://github.com/rspec/rspec-core/blob/c4dbf1bef8bb7d663c70c1acec7a5c742e41fc96/lib/rspec/core/example_group.rb#L508)
+              # I didn't look at why it made tests fail, maybe an object was getting reused in RSpec tests,
+              # if so, then that probably already works, and its the tests that are wrong.
               @__memoized = ThreadsafeMemoized.new
             end
           end
