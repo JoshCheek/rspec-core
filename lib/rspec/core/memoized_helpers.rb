@@ -255,9 +255,10 @@ EOS
         #   maybe 3 declarations) in any given example group, but that can
         #   quickly degrade with overuse. YMMV.
         #
-        # @note `let` uses an `||=` conditional that has the potential to
-        #   behave in surprising ways in examples that spawn separate threads,
-        #   though we have yet to see this in practice. You've been warned.
+        # @note `let` can be configured to be threadsafe or not.
+        #   If it is threadsafe, it will take longer to access the value.
+        #   If it is not threadsafe, it may behave in surprising ways in examples
+        #   that spawn separate threads. Specify this on `RSpec.configure`
         #
         # @note Because `let` is designed to create state that is reset between
         #   each example, and `before(:context)` is designed to setup state that
@@ -360,6 +361,11 @@ EOS
         # name.
         #
         # When given a `name`, calling `super` in the block is not supported.
+        #
+        # @note `subject` can be configured to be threadsafe or not.
+        #   If it is threadsafe, it will take longer to access the value.
+        #   If it is not threadsafe, it may behave in surprising ways in examples
+        #   that spawn separate threads. Specify this on `RSpec.configure`
         #
         # @param name [String,Symbol] used to define an accessor with an
         #   intention revealing name
