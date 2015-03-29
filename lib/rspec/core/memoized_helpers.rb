@@ -122,14 +122,23 @@ module RSpec
     private
 
       # @private
+      def initialize(*)
+        __init_memoized
+        super
+      end
+
+      # @private
       def __memoized # raises warnings on private attributes, so have to do it this way
         @__memoized
       end
 
       # @private
-      def initialize(*)
-        @__memoized = ThreadsafeMemoized.new
-        super
+      def __init_memoized
+        @__memoized = if RSpec.configuration.threadsafe?
+                        ThreadsafeMemoized.new
+                      else
+                        NonThreadSafeMemoized.new
+                      end
       end
 
       # @private
@@ -145,6 +154,17 @@ module RSpec
               @memoized.fetch(key) { @memoized[key] = yield }
             end
           end
+        end
+      end
+
+      # @private
+      class NonThreadSafeMemoized
+        def initialize
+          @memoized = {}
+        end
+
+        def fetch_or_store(key)
+          @memoized.fetch(key) { @memoized[key] = yield }
         end
       end
 
@@ -169,7 +189,7 @@ module RSpec
               # which are both called from self.run (https://github.com/rspec/rspec-core/blob/c4dbf1bef8bb7d663c70c1acec7a5c742e41fc96/lib/rspec/core/example_group.rb#L508)
               # I didn't look at why it made tests fail, maybe an object was getting reused in RSpec tests,
               # if so, then that probably already works, and its the tests that are wrong.
-              @__memoized = ThreadsafeMemoized.new
+              __init_memoized
             end
           end
         end

@@ -381,69 +381,99 @@ module RSpec::Core
         expect(ran_successfully).to eq true
       end
 
-      specify 'first thread to access determines the return value' do
-        describe_successfully do
-          let!(:order) { ThreadOrder.new }
-          after { order.apocalypse! :join }
 
-          let :memoized_value do
-            if order.current == :second
-              :never_accessed
-            else
-              order.pass_to :second, :resume_on => :sleep
-              :expected_value
-            end
-          end
+      context 'when not threadsafe' do
+        # would be nice to not set this on the global
+        before { RSpec.configuration.threadsafe = false }
 
-          example do
-            order.declare(:second) { expect(memoized_value).to eq :expected_value }
-            expect(memoized_value).to eq :expected_value
-          end
-        end
-      end
+        it 'can wind up overwriting the previous memoized value (but if you don\'t need threadsafety, this is faster)' do
+          describe_successfully do
+            let!(:order) { ThreadOrder.new }
+            after { order.apocalypse! :join }
 
-      specify 'memoized block will only be evaluated once' do
-        describe_successfully do
-          let!(:order) { ThreadOrder.new }
-          after  { order.apocalypse! }
-          before { @previously_accessed = false }
-
-          let :memoized_value do
-            raise 'Called multiple times!' if @previously_accessed
-            @previously_accessed = true
-            order.pass_to :second, :resume_on => :sleep
-          end
-
-          example do
-            order.declare(:second) { memoized_value }
-            memoized_value
-            order.join_all
-          end
-        end
-      end
-
-      specify 'memoized blocks prevent other threads from accessing, even when it is accesssed in a superclass' do
-        describe_successfully do
-          let!(:order) { ThreadOrder.new }
-          after { order.apocalypse! :join }
-
-          let!(:calls) { {:parent => 0, :child => 0} }
-          let(:memoized_value) do
-            calls[:parent] += 1
-            order.pass_to :second, :resume_on => :sleep
-            'parent'
-          end
-
-          describe 'child' do
             let :memoized_value do
-              calls[:child] += 1
-              "#{super()}/child"
+              if order.current == :second
+                :second_access
+              else
+                order.pass_to :second, :resume_on => :exit
+                :first_access
+              end
             end
 
             example do
-              order.declare(:second) { expect(memoized_value).to eq 'parent/child' }
-              expect(memoized_value).to eq 'parent/child'
-              expect(calls).to eq :parent => 1, :child => 1
+              order.declare(:second) { expect(memoized_value).to eq :second_access }
+              expect(memoized_value).to eq :first_access
+            end
+          end
+        end
+      end
+
+      context 'when threadsafe' do
+        before(:context) { RSpec.configuration.threadsafe = true }
+        specify 'first thread to access determines the return value' do
+          describe_successfully do
+            let!(:order) { ThreadOrder.new }
+            after { order.apocalypse! :join }
+
+            let :memoized_value do
+              if order.current == :second
+                :second_access
+              else
+                order.pass_to :second, :resume_on => :sleep
+                :first_access
+              end
+            end
+
+            example do
+              order.declare(:second) { expect(memoized_value).to eq :first_access }
+              expect(memoized_value).to eq :first_access
+            end
+          end
+        end
+
+        specify 'memoized block will only be evaluated once' do
+          describe_successfully do
+            let!(:order) { ThreadOrder.new }
+            after  { order.apocalypse! }
+            before { @previously_accessed = false }
+
+            let :memoized_value do
+              raise 'Called multiple times!' if @previously_accessed
+              @previously_accessed = true
+              order.pass_to :second, :resume_on => :sleep
+            end
+
+            example do
+              order.declare(:second) { memoized_value }
+              memoized_value
+              order.join_all
+            end
+          end
+        end
+
+        specify 'memoized blocks prevent other threads from accessing, even when it is accesssed in a superclass' do
+          describe_successfully do
+            let!(:order) { ThreadOrder.new }
+            after { order.apocalypse! :join }
+
+            let!(:calls) { {:parent => 0, :child => 0} }
+            let(:memoized_value) do
+              calls[:parent] += 1
+              order.pass_to :second, :resume_on => :sleep
+              'parent'
+            end
+
+            describe 'child' do
+              let :memoized_value do
+                calls[:child] += 1
+                "#{super()}/child"
+              end
+
+              example do
+                order.declare(:second) { expect(memoized_value).to eq 'parent/child' }
+                expect(memoized_value).to eq 'parent/child'
+                expect(calls).to eq :parent => 1, :child => 1
+              end
             end
           end
         end
