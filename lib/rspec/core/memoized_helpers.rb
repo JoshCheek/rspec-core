@@ -119,17 +119,20 @@ module RSpec
         expect(subject)
       end
 
+      # @private
+      # should just be placed in private section,
+      # but Ruby issues warnings on private attributes.
+      # and expanding it to the equivalent method upsets Rubocop,
+      # b/c it should obviously be a reader
+      attr_reader :__memoized
+      private :__memoized
+
     private
 
       # @private
       def initialize(*)
         __init_memoized
         super
-      end
-
-      # @private
-      def __memoized # raises warnings on private attributes, so have to do it this way
-        @__memoized
       end
 
       # @private
@@ -186,7 +189,7 @@ module RSpec
               # Really, this should set the old @__memoized back into place.
               #
               # Caller is the before and after context hooks
-              # which are both called from self.run (https://github.com/rspec/rspec-core/blob/c4dbf1bef8bb7d663c70c1acec7a5c742e41fc96/lib/rspec/core/example_group.rb#L508)
+              # which are both called from self.run
               # I didn't look at why it made tests fail, maybe an object was getting reused in RSpec tests,
               # if so, then that probably already works, and its the tests that are wrong.
               __init_memoized
